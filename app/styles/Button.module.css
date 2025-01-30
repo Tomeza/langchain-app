@@ -1,0 +1,15 @@
+.relatedQuestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 0.875rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background-color: white;
+  color: rgb(17, 24, 39);
+}
+
+.relatedQuestion:hover {
+  background-color: rgb(249, 250, 251);
+  color: rgb(37, 99, 235);
+} 

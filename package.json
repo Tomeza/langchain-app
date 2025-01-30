@@ -1,0 +1,54 @@
+{
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "@langchain/community": "^0.3.28",
+    "@langchain/core": "^0.3.37",
+    "@langchain/openai": "^0.3.17",
+    "chromadb": "^1.10.4",
+    "csv-parse": "^5.6.0",
+    "dotenv": "^16.4.7",
+    "encoding": "^0.1.13",
+    "hnswlib-node": "^3.0.0",
+    "langchain": "^0.3.12",
+    "next": "13.5.8",
+    "openai": "^4.80.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.5",
+    "@babel/plugin-transform-runtime": "^7.22.5",
+    "@babel/preset-env": "^7.22.5",
+    "@babel/runtime": "^7.22.5",
+    "@types/node": "^18.17.0",
+    "@types/react": "18.2.0",
+    "@types/react-dom": "18.2.0",
+    "autoprefixer": "^10.4.14",
+    "babel-loader": "^9.1.2",
+    "dotenv-cli": "^8.0.0",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "5.0.4"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "setup-data": "ts-node -T scripts/setup-vectorstore.ts",
+    "test:vectorstore": "dotenv -e .env.local -- ts-node -T scripts/test-vectorstore.ts"
+  },
+  "resolutions": {
+    "**/next": "13.5.8",
+    "**/postcss": "8.4.31",
+    "**/zod": "3.22.3",
+    "**/@babel/traverse": "7.23.2",
+    "**/json5": "2.2.3",
+    "**/semver": "7.5.3"
+  }
+}
