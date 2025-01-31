@@ -9,10 +9,11 @@
     "@langchain/openai": "^0.3.17",
     "chromadb": "^1.10.4",
     "csv-parse": "^5.6.0",
+    "d3-dsv": "^3.0.1",
     "dotenv": "^16.4.7",
     "encoding": "^0.1.13",
     "hnswlib-node": "^3.0.0",
-    "langchain": "^0.3.12",
+    "langchain": "^0.3.15",
     "next": "13.5.8",
     "openai": "^4.80.1",
     "react": "18.2.0",
@@ -41,7 +42,9 @@
     "start": "next start",
     "lint": "next lint",
     "setup-data": "ts-node -T scripts/setup-vectorstore.ts",
-    "test:vectorstore": "dotenv -e .env.local -- ts-node -T scripts/test-vectorstore.ts"
+    "test:vectorstore": "dotenv -e .env.local -- ts-node -T scripts/test-vectorstore.ts",
+    "backup-knowledge": "ts-node scripts/update-knowledge.ts backup",
+    "update-knowledge": "ts-node scripts/update-knowledge.ts update"
   },
   "resolutions": {
     "**/next": "13.5.8",

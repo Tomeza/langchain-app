@@ -1,0 +1,3 @@
+question,answer,tags,priority,purpose
+"変更可能な項目は何ですか？","以下の項目は変更可能です：\n\n・利用便\n・来場時間\n・車種","reservation_change_rules,変更可能","重要","変更可能項目の明確化"
+"変更できない項目は何ですか？","以下の項目は変更できません：\n\n・予約日程（キャンセル後に再予約が必要）","reservation_change_rules,変更不可","重要","変更不可項目の明確化"

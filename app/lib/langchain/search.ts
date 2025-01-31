@@ -1,13 +1,22 @@
 import { VectorStore } from '@langchain/core/vectorstores';
 import { Document } from '@langchain/core/documents';
 
+export type SearchContext = 
+  | 'default'           // 予約方法
+  | 'international_ng'  // 国際線制限
+  | 'vehicles_ng'       // 車両制限
+  | 'reservation_rules' // 予約変更ルール
+  | 'cancellation'      // キャンセル関連
+  | 'fee_rules'         // 料金関連
+  | 'other_contexts';   // その他
+
 interface SearchResult {
   question: string;
   answer: string;
   tags: string[];
   priority: string;
   purpose: string;
-  score: number;
+  context: SearchContext;
 }
 
 // メタデータの型定義
@@ -41,35 +50,66 @@ function mapCarQuestion(query: string): string {
   return query;
 }
 
+// コンテキストの判定関数
+function getDocumentContext(tags: string[]): SearchContext {
+  const tagStr = tags.join(',').toLowerCase();
+  
+  if (tagStr.includes('キャンセル')) return 'cancellation';
+  if (tagStr.includes('深夜料金') || tagStr.includes('追加料金') || tagStr.includes('料金詳細')) return 'fee_rules';
+  if (tagStr.includes('予約方法')) return 'default';
+  if (tagStr.includes('国際線')) return 'international_ng';
+  if (tagStr.includes('車種制限')) return 'vehicles_ng';
+  if (tagStr.includes('予約変更')) return 'reservation_rules';
+  
+  return 'other_contexts';
+}
+
+// 知識ベース検索関数
 export async function searchKnowledge(
   vectorStore: VectorStore,
   query: string,
   topK: number = 3
 ): Promise<SearchResult[]> {
-  const mappedQuery = mapCarQuestion(query);
-  const results = await vectorStore.similaritySearch(mappedQuery, topK);
+  const results = await vectorStore.similaritySearch(query, topK);
   
-  return results.map((doc: Document) => {
-    const metadata = doc.metadata as DocumentMetadata;
-    return {
-      question: metadata.question,
-      answer: metadata.answer,
-      tags: metadata.tags,
-      priority: metadata.priority,
-      purpose: metadata.purpose,
-      score: metadata.score || 0
-    };
-  });
+  return results
+    .map((doc: Document) => {
+      const metadata = doc.metadata as DocumentMetadata;
+      const context = getDocumentContext(metadata.tags);
+      return {
+        question: metadata.question,
+        answer: metadata.answer,
+        tags: metadata.tags,
+        priority: metadata.priority,
+        purpose: metadata.purpose,
+        context: context,
+        score: metadata.score || 0
+      };
+    })
+    .filter(result => result.context !== 'other_contexts');
 }
 
-// コンテキストの型定義
-export type SearchContext = 
-  | 'default'           // 一般的な予約
-  | 'international_ng'  // 国際線利用制限
-  | 'vehicles_ng'       // 車両制限
-  | 'reservation_rules' // 予約変更ルール
-  | 'cancellation'     // キャンセル関連
-  | 'other_contexts';   // その他
+// 関連質問取得関数
+export async function getRelatedQuestions(
+  vectorStore: VectorStore,
+  currentQuestion: string,
+  currentTags: string[],
+  context: SearchContext = 'default',
+  maxQuestions: number = 3
+): Promise<string[]> {
+  const results = await vectorStore.similaritySearch(currentQuestion, 7);
+
+  const filtered = results
+    .filter(doc => {
+      const metadata = doc.metadata as DocumentMetadata;
+      return metadata.question !== currentQuestion &&
+             getDocumentContext(metadata.tags) === context;
+    })
+    .map(doc => (doc.metadata as DocumentMetadata).question)
+    .slice(0, maxQuestions);
+
+  return filtered;
+}
 
 // タグマッピングの型定義
 type TagMapping = {
@@ -116,82 +156,13 @@ const contextTags: ContextTags = {
     '変更不可項目': ['予約変更', '予約条件']
   },
   cancellation: {
-    'キャンセル手続き': ['キャンセル料', '欠航対応'],
-    'キャンセル待ち': ['空き状況', 'リアルタイム予約']
+    'キャンセル': ['手続き', '料金', 'キャンセル料'],
+    '手続き': ['キャンセル', 'キャンセル料'],
+    '料金': ['キャンセル', 'キャンセル料']
+  },
+  fee_rules: {
+    '料金': ['深夜料金', '追加料金', '延長料金'],
+    '深夜料金': ['料金', '追加料金'],
+    '追加料金': ['料金', '深夜料金']
   }
-};
-
-// 関連質問を取得する関数（コンテキスト対応）
-export async function getRelatedQuestions(
-  vectorStore: VectorStore,
-  currentQuestion: string,
-  currentTags: string[],
-  context: SearchContext = 'default',
-  maxQuestions: number = 3
-): Promise<string[]> {
-  const results = await vectorStore.similaritySearch(
-    currentQuestion,
-    7
-  );
-
-  console.log('Debug - Context:', context);
-  console.log('Debug - Current tags:', currentTags);
-
-  // タグの関連性チェック関数
-  const isTagRelated = (tag1: string, tag2: string, context: Exclude<SearchContext, 'other_contexts'>): boolean => {
-    const words1 = tag1.trim().toLowerCase();
-    const words2 = tag2.trim().toLowerCase();
-
-    if (words1 === words2) return true;
-
-    const contextualTags = contextTags[context] || contextTags.default;
-    // タグの関連性をより詳細にチェック
-    const isRelated = (
-      // 直接的な関連性
-      contextualTags[words1]?.includes(words2) || 
-      contextualTags[words2]?.includes(words1) ||
-      // 間接的な関連性（共通の親タグを持つ）
-      Object.entries(contextualTags).some(([parentTag, relatedTags]) => 
-        relatedTags.includes(words1) && relatedTags.includes(words2)
-      )
-    );
-
-    if (isRelated) {
-      console.log(`Customer flow [${context}]: ${words1} → ${words2}`);
-      return true;
-    }
-
-    return false;
-  };
-
-  const filtered = results
-    .filter(doc => {
-      const metadata = doc.metadata as DocumentMetadata;
-      return metadata.question !== currentQuestion;
-    })
-    .filter(doc => {
-      console.log('Debug - Full doc:', JSON.stringify(doc, null, 2));
-      
-      const metadata = doc.metadata as DocumentMetadata;
-      // メタデータのタグが存在することを確認
-      if (!metadata.tags) return false;
-      
-      // 少なくとも1つの関連タグがあるかチェック
-      const hasRelatedTag = currentTags.some(currentTag =>
-        metadata.tags.some(docTag =>
-          isTagRelated(currentTag, docTag, context as Exclude<SearchContext, 'other_contexts'>)
-        )
-      );
-
-      console.log('Debug - Question:', metadata.question, 
-        'Context:', context,
-        'Tags:', metadata.tags,
-        'Has related tag:', hasRelatedTag
-      );
-      return hasRelatedTag;
-    });
-
-  return filtered
-    .slice(0, maxQuestions)
-    .map(doc => (doc.metadata as DocumentMetadata).question);
-} 
+}; 

@@ -46,10 +46,35 @@ const contextTags: Record<Exclude<SearchContext, 'other_contexts'>, Record<strin
     '利用延長': ['予約変更', '特例対応']
   },
   cancellation: {
-    'キャンセル手続き': ['キャンセル料', '欠航対応'],
-    'キャンセル待ち': ['空き状況', 'リアルタイム予約']
+    'キャンセル': ['キャンセル手続き', 'キャンセル料'],
+    'キャンセル手続き': ['キャンセル', 'キャンセル料'],
+    'キャンセル料': ['キャンセル', 'キャンセル手続き']
+  },
+  fee_rules: {
+    '深夜料金': ['料金詳細', '追加料金'],
+    '追加料金': ['深夜料金', '料金詳細'],
+    '料金詳細': ['深夜料金', '追加料金']
   }
 };
+
+// テスト用のヘルパー関数を追加
+async function testRelatedQuestions(
+  vectorStore: VectorStore,
+  query: string,
+  tags: string[],
+  context: SearchContext
+) {
+  console.log('Query:', query);
+  console.log('Tags:', tags);
+
+  const relatedQuestions = await getRelatedQuestions(
+    vectorStore,
+    query,
+    tags.map(tag => tag.toLowerCase().trim()),
+    context
+  );
+  console.log(`Related questions [${context}]:`, relatedQuestions);
+}
 
 async function testVectorStore() {
   try {
@@ -116,6 +141,24 @@ async function testVectorStore() {
       );
       console.log(`Related questions [${context}]:`, relatedQuestions);
     }
+
+    // キャンセル関連のテスト
+    console.log('\nTesting related questions for context: cancellation');
+    await testRelatedQuestions(
+      vectorStore,
+      'キャンセル方法を教えてください',
+      ['キャンセル手続き', 'キャンセル'],
+      'cancellation'
+    );
+
+    // 料金関連のテスト
+    console.log('\nTesting related questions for context: fee_rules');
+    await testRelatedQuestions(
+      vectorStore,
+      '深夜料金について教えてください',
+      ['深夜料金', '追加料金'],
+      'fee_rules'
+    );
 
   } catch (error) {
     console.error('Test failed:', error);
